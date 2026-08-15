@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.endsWith;
@@ -34,7 +35,7 @@ class AccountControllerTest {
 
     @Test
     void create_shouldReturn201AndLocationHeader() throws Exception {
-        Account created = new Account(42L, "ES123", "Ana", 100L);
+        Account created = new Account(42L, "ES123", "Ana", new BigDecimal("100.00"));
         when(service.createAccount(any(Account.class))).thenReturn(created);
 
         mockMvc.perform(post("/api/v1/accounts")
@@ -46,7 +47,7 @@ class AccountControllerTest {
 
     @Test
     void create_shouldDelegateToService() throws Exception {
-        Account created = new Account(7L, "ES999", "Pedro", 50L);
+        Account created = new Account(7L, "ES999", "Pedro", new BigDecimal("50.00"));
         when(service.createAccount(any(Account.class))).thenReturn(created);
 
         mockMvc.perform(post("/api/v1/accounts")
@@ -59,7 +60,7 @@ class AccountControllerTest {
 
     @Test
     void getById_existing_shouldReturn200AndAccount() throws Exception {
-        Account account = new Account(42L, "ES123", "Ana", 100L);
+        Account account = new Account(42L, "ES123", "Ana", new BigDecimal("100.00"));
         when(service.getAccount(42L)).thenReturn(Optional.of(account));
 
         mockMvc.perform(get("/api/v1/accounts/42"))

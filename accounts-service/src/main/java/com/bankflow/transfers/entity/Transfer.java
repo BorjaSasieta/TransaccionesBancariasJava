@@ -1,12 +1,18 @@
 package com.bankflow.transfers.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "transactions")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Transfer {
 
     @Id
@@ -43,8 +49,6 @@ public class Transfer {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
-    public Transfer() {}
-
     public Transfer(Long fromAccountId, Long toAccountId, BigDecimal amount,
                     String currency, String idempotencyKey, String reference) {
         this.fromAccountId = fromAccountId;
@@ -54,27 +58,4 @@ public class Transfer {
         this.idempotencyKey = idempotencyKey;
         this.reference = reference;
     }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getFromAccountId() { return fromAccountId; }
-    public void setFromAccountId(Long fromAccountId) { this.fromAccountId = fromAccountId; }
-    public Long getToAccountId() { return toAccountId; }
-    public void setToAccountId(Long toAccountId) { this.toAccountId = toAccountId; }
-    public BigDecimal getAmount() { return amount; }
-    public void setAmount(BigDecimal amount) { this.amount = amount; }
-    public String getCurrency() { return currency; }
-    public void setCurrency(String currency) { this.currency = currency; }
-    public TransferStatus getStatus() { return status; }
-    public void setStatus(TransferStatus status) { this.status = status; }
-    public String getIdempotencyKey() { return idempotencyKey; }
-    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
-    public String getReference() { return reference; }
-    public void setReference(String reference) { this.reference = reference; }
-    public String getErrorMessage() { return errorMessage; }
-    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
-    public OffsetDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

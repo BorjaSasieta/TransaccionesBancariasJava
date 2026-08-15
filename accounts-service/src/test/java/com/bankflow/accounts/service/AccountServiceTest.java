@@ -5,6 +5,7 @@ import com.bankflow.accounts.repository.AccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import java.math.BigDecimal;
 import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -23,8 +24,8 @@ class AccountServiceTest {
 
     @Test
     void createAccount_shouldSaveAndReturnAccount() {
-        Account input = new Account(null, "IBAN123", "Alice", 1000L);
-        Account saved = new Account(1L, "IBAN123", "Alice", 1000L);
+        Account input = new Account(null, "IBAN123", "Alice", new BigDecimal("1000.00"));
+        Account saved = new Account(1L, "IBAN123", "Alice", new BigDecimal("1000.00"));
 
         when(repository.save(any(Account.class))).thenReturn(saved);
 
@@ -36,7 +37,7 @@ class AccountServiceTest {
 
     @Test
     void getAccountById_existing_shouldReturn() {
-        Account a = new Account(1L, "IBAN1", "Bob", 500L);
+        Account a = new Account(1L, "IBAN1", "Bob", new BigDecimal("500.00"));
         when(repository.findById(1L)).thenReturn(Optional.of(a));
 
         Optional<Account> res = service.getAccount(1L);

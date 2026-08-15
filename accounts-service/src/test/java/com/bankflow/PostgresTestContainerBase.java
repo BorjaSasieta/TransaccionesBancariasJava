@@ -11,6 +11,7 @@ import org.testcontainers.utility.DockerImageName;
 public abstract class PostgresTestContainerBase {
 
     @Container
+    @SuppressWarnings("resource")
     public static PostgreSQLContainer<?> postgresContainer =
             new PostgreSQLContainer<>(DockerImageName.parse("postgres:14"))
                     .withDatabaseName("bankflow")

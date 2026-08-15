@@ -150,6 +150,7 @@
                 <version>${maven.surefire.plugin.version}</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
+                    <argLine>-Xshare:off</argLine>
                     <includes>
                         <include>**/*Test.java</include>
                         <include>**/*Tests.java</include>
@@ -168,6 +169,7 @@
                         <include>**/*IntegrationTest.java</include>
                     </includes>
                     <useModulePath>false</useModulePath>
+                    <argLine>-Xshare:off</argLine>
                     <failIfNoTests>false</failIfNoTests>
                 </configuration>
                 <executions>

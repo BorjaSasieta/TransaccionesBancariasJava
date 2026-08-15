@@ -224,11 +224,21 @@ Cobertura recomendada: 80% en lógica crítica.
 ---
 
 ## Observabilidad
-- Logs estructurados JSON (Logback).
-- Spring Boot Actuator + Micrometer.
-- Exposición de métricas para Prometheus.
+- Logs estructurados JSON (Logback) vía `logback-spring.xml` + `LogstashEncoder` (campo `app`).
+- Spring Boot Actuator + Micrometer, expuesto en `/actuator/health`, `/actuator/info` y `/actuator/prometheus`.
+- `BankingHealthIndicator` personalizado: health de negocio que verifica la conexión a la BD (`/actuator/health/banking`).
+- `info.app.*` (nombre, descripción, versión) expuesto en `/actuator/info`.
 - (Opcional) OpenTelemetry / Sleuth para trazas distribuidas.
 - Emitir eventos para auditoría / conciliación (Kafka/RabbitMQ o tabla de eventos).
+
+---
+
+## OpenAPI / Swagger UI
+
+- `springdoc-openapi-starter-webmvc-ui` 2.8.17 (compatible con Spring Boot 3.x).
+- `OpenApiConfig` define el metadata (title "BankFlow API", versión v1, descripción).
+- Docs en `/v3/api-docs` y UI en `/swagger-ui/index.html`.
+- Nota: en producción se recomienda `springdoc.api-docs.enabled=false` y `springdoc.swagger-ui.enabled=false`.
 
 ---
 
@@ -258,7 +268,7 @@ Cobertura recomendada: 80% en lógica crítica.
 2. M2 (Día 2): Endpoints de cuentas + tests unitarios.
 3. M3 (Día 3–4): Transferencias ACID con SELECT FOR UPDATE + tests de integración.
 4. M4 (Día 5): Idempotencia + auditoría + eventos. ✅ Hecho — `TransferService` devuelve `TransferResult(transfer, replayed)` (201 nuevo / 200 replay / 202 PENDING / 409 race), `AuditService` + `AuditEventListener` persisten en `audit_events` tras commit, `GlobalExceptionHandler` mapea errores a respuestas HTTP coherentes.
-5. M5 (Día 6): Observabilidad + OpenAPI.
+5. M5 (Día 6): Observabilidad + OpenAPI. ✅ Hecho — Actuator (health + `BankingHealthIndicator` + info), Prometheus (`/actuator/prometheus`), logs JSON con `LogstashEncoder` y springdoc OpenAPI (`/v3/api-docs` + Swagger UI).
 6. M6 (Día 7): Docker, docker-compose, CI y documentación final.
 
 (Ajusta tiempos a tu disponibilidad.)

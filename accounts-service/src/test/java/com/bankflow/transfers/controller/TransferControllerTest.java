@@ -107,4 +107,11 @@ class TransferControllerTest {
         mockMvc.perform(get("/api/v1/transfers/999"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void unknownPath_shouldReturn404() throws Exception {
+        mockMvc.perform(get("/api/v1/unknown"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
+    }
 }

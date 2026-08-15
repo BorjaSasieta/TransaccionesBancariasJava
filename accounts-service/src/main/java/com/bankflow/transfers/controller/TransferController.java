@@ -33,7 +33,7 @@ public class TransferController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TransferResponseDto> getTransfer(@PathVariable Long id) {
+    public ResponseEntity<TransferResponseDto> getTransfer(@PathVariable("id") Long id) {
         return transferService.getTransfer(id)
                 .map(t -> ResponseEntity.ok(TransferResponseDto.from(t)))
                 .orElseGet(() -> ResponseEntity.notFound().build());

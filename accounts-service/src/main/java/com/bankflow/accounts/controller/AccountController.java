@@ -25,7 +25,7 @@ public class AccountController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AccountDto> get(@PathVariable Long id) {
+    public ResponseEntity<AccountDto> get(@PathVariable("id") Long id) {
         return service.getAccount(id)
                 .map(account -> ResponseEntity.ok(AccountDto.from(account)))
                 .orElseGet(() -> ResponseEntity.notFound().build());

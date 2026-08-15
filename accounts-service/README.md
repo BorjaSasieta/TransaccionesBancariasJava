@@ -189,8 +189,10 @@ Tabla `transactions`:
   5. Commit.
 - Idempotencia:
   - Cliente puede enviar `Idempotency-Key`.
-  - Si existe transacción con esa key y status COMPLETED → devolver resultado guardado.
-  - Si existe y está PENDING → devolver 202 o gestionar según diseño (espera/reintento).
+  - La clave se valida de forma **scoped por cuenta origen** (`findByIdempotencyKeyAndFromAccountId`) y respaldada por índice único `(idempotency_key, from_account_id)`.
+  - Si existe transacción con esa key y estado terminal (COMPLETED/FAILED) → **replay**: devuelve la transacción guardada (HTTP 200).
+  - Si existe y está PENDING (solicitud concurrente en curso) → HTTP 202.
+  - Si dos solicitudes concurrentes chocan contra el índice único → HTTP 409 (manejado vía `DataIntegrityViolationException`).
 
 Trade-offs:
 - SELECT FOR UPDATE: simple, consistente, pero puede reducir concurrencia en alto throughput.
@@ -207,6 +209,17 @@ Trade-offs:
   - ./mvnw test
 
 Cobertura recomendada: 80% en lógica crítica.
+
+---
+
+## Auditoría y eventos
+
+- Eventos de dominio (records inmutables) publicados vía `ApplicationEventPublisher`:
+  - `AccountCreatedEvent` (al crear cuenta).
+  - `TransferCreatedEvent`, `TransferCompletedEvent`, `TransferFailedEvent` (en el flujo de transferencia).
+- `AuditEventListener` escucha con `@TransactionalEventListener(AFTER_COMMIT)`: solo persiste en `audit_events` cuando la transacción de negocio hace commit, garantizando que la auditoría refleja estado confirmado.
+- `AuditService.record(...)` serializa el payload a JSON con Jackson y guarda con `@Transactional(REQUIRES_NEW)` (transacción/EntityManager propios, evita perder el insert dentro del callback `afterCommit`).
+- Tabla `audit_events` (migración V3) con índices por `(entity_type, entity_id)` y `created_at`.
 
 ---
 
@@ -244,7 +257,7 @@ Cobertura recomendada: 80% en lógica crítica.
 1. M1 (Día 1): Esqueleto + entidades + migraciones.
 2. M2 (Día 2): Endpoints de cuentas + tests unitarios.
 3. M3 (Día 3–4): Transferencias ACID con SELECT FOR UPDATE + tests de integración.
-4. M4 (Día 5): Idempotencia + auditoría + eventos.
+4. M4 (Día 5): Idempotencia + auditoría + eventos. ✅ Hecho — `TransferService` devuelve `TransferResult(transfer, replayed)` (201 nuevo / 200 replay / 202 PENDING / 409 race), `AuditService` + `AuditEventListener` persisten en `audit_events` tras commit, `GlobalExceptionHandler` mapea errores a respuestas HTTP coherentes.
 5. M5 (Día 6): Observabilidad + OpenAPI.
 6. M6 (Día 7): Docker, docker-compose, CI y documentación final.
 

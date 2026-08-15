@@ -3,6 +3,8 @@ package com.bankflow.transfers.service;
 import com.bankflow.PostgresTestContainerBase;
 import com.bankflow.accounts.entity.Account;
 import com.bankflow.accounts.repository.AccountRepository;
+import com.bankflow.audit.entity.AuditEvent;
+import com.bankflow.audit.repository.AuditEventRepository;
 import com.bankflow.transfers.entity.Transfer;
 import com.bankflow.transfers.entity.TransferStatus;
 import com.bankflow.transfers.repository.TransferRepository;
@@ -32,6 +34,7 @@ class TransferServiceIT extends PostgresTestContainerBase {
     @Autowired TransferService transferService;
     @Autowired AccountRepository accountRepository;
     @Autowired TransferRepository transferRepository;
+    @Autowired AuditEventRepository auditEventRepository;
 
     @Test
     void transfer_shouldDebitFromAndCreditTo() {
@@ -39,7 +42,7 @@ class TransferServiceIT extends PostgresTestContainerBase {
         Account to = accountRepository.save(account("ES_IT_B", new BigDecimal("500.00")));
 
         Transfer result = transferService.createTransfer(new Transfer(from.getId(), to.getId(),
-                new BigDecimal("100.00"), "EUR", "it-1", "ref"));
+                new BigDecimal("100.00"), "EUR", "it-1", "ref")).transfer();
 
         assertThat(result.getStatus()).isEqualTo(TransferStatus.COMPLETED);
         assertThat(balanceOf(from.getId())).isEqualByComparingTo(new BigDecimal("900.00"));
@@ -52,7 +55,7 @@ class TransferServiceIT extends PostgresTestContainerBase {
         Account to = accountRepository.save(account("ES_IT_D", new BigDecimal("500.00")));
 
         Transfer result = transferService.createTransfer(new Transfer(from.getId(), to.getId(),
-                new BigDecimal("100.00"), "EUR", "it-2", "ref"));
+                new BigDecimal("100.00"), "EUR", "it-2", "ref")).transfer();
 
         assertThat(result.getStatus()).isEqualTo(TransferStatus.FAILED);
         assertThat(result.getErrorMessage()).isEqualTo("Insufficient funds");
@@ -76,12 +79,13 @@ class TransferServiceIT extends PostgresTestContainerBase {
         Account to = accountRepository.save(account("ES_IT_G", new BigDecimal("0.00")));
 
         Transfer first = transferService.createTransfer(new Transfer(from.getId(), to.getId(),
-                new BigDecimal("50.00"), "EUR", "it-key-1", "ref"));
-        Transfer second = transferService.createTransfer(new Transfer(from.getId(), to.getId(),
+                new BigDecimal("50.00"), "EUR", "it-key-1", "ref")).transfer();
+        TransferResult second = transferService.createTransfer(new Transfer(from.getId(), to.getId(),
                 new BigDecimal("50.00"), "EUR", "it-key-1", "ref"));
 
-        assertThat(second.getId()).isEqualTo(first.getId());
-        assertThat(second.getStatus()).isEqualTo(TransferStatus.COMPLETED);
+        assertThat(second.replayed()).isTrue();
+        assertThat(second.transfer().getId()).isEqualTo(first.getId());
+        assertThat(second.transfer().getStatus()).isEqualTo(TransferStatus.COMPLETED);
         assertThat(transferRepository.findByIdempotencyKey("it-key-1")).isPresent();
         assertThat(balanceOf(from.getId())).isEqualByComparingTo(new BigDecimal("950.00"));
     }
@@ -100,7 +104,7 @@ class TransferServiceIT extends PostgresTestContainerBase {
             futures.add(pool.submit(() -> {
                 start.await();
                 return transferService.createTransfer(new Transfer(from.getId(), to.getId(),
-                        new BigDecimal("100.00"), "EUR", "it-conc-" + idx, "ref"));
+                        new BigDecimal("100.00"), "EUR", "it-conc-" + idx, "ref")).transfer();
             }));
         }
         start.countDown();
@@ -117,6 +121,20 @@ class TransferServiceIT extends PostgresTestContainerBase {
         assertThat(failed).isEqualTo(1);
         assertThat(balanceOf(from.getId())).isEqualByComparingTo(new BigDecimal("50.00"));
         assertThat(balanceOf(to.getId())).isEqualByComparingTo(new BigDecimal("100.00"));
+    }
+
+    @Test
+    void transfer_shouldWriteAuditEvents() {
+        Account from = accountRepository.save(account("ES_IT_AUDIT_A", new BigDecimal("1000.00")));
+        Account to = accountRepository.save(account("ES_IT_AUDIT_B", new BigDecimal("500.00")));
+
+        transferService.createTransfer(new Transfer(from.getId(), to.getId(),
+                new BigDecimal("100.00"), "EUR", "it-audit-1", "ref"));
+
+        List<AuditEvent> events = auditEventRepository.findAll();
+        assertThat(events).extracting(AuditEvent::getEventType)
+                .contains("TRANSFER_CREATED", "TRANSFER_COMPLETED");
+        assertThat(events).extracting(AuditEvent::getEntityType).containsOnly("Transfer");
     }
 
     private Account account(String iban, BigDecimal balance) {

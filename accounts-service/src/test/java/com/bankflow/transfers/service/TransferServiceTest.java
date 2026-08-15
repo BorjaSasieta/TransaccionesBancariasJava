@@ -2,14 +2,19 @@ package com.bankflow.transfers.service;
 
 import com.bankflow.accounts.entity.Account;
 import com.bankflow.accounts.repository.AccountRepository;
+import com.bankflow.events.TransferCompletedEvent;
+import com.bankflow.events.TransferCreatedEvent;
+import com.bankflow.events.TransferFailedEvent;
 import com.bankflow.transfers.entity.Transfer;
 import com.bankflow.transfers.entity.TransferStatus;
+import com.bankflow.transfers.exception.TransferInProgressException;
 import com.bankflow.transfers.repository.TransferRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -22,6 +27,7 @@ class TransferServiceTest {
 
     @Mock AccountRepository accountRepository;
     @Mock TransferRepository transferRepository;
+    @Mock ApplicationEventPublisher eventPublisher;
     @InjectMocks TransferService service;
 
     @BeforeEach
@@ -39,14 +45,17 @@ class TransferServiceTest {
 
         Transfer input = new Transfer(1L, 2L, new BigDecimal("100.00"), "EUR", null, "ref-1");
 
-        Transfer result = service.createTransfer(input);
+        TransferResult result = service.createTransfer(input);
 
-        assertThat(result.getStatus()).isEqualTo(TransferStatus.COMPLETED);
+        assertThat(result.replayed()).isFalse();
+        assertThat(result.transfer().getStatus()).isEqualTo(TransferStatus.COMPLETED);
         assertThat(from.getBalance()).isEqualByComparingTo(new BigDecimal("900.00"));
         assertThat(to.getBalance()).isEqualByComparingTo(new BigDecimal("600.00"));
         verify(accountRepository, times(1)).save(from);
         verify(accountRepository, times(1)).save(to);
         verify(transferRepository, times(2)).save(any(Transfer.class));
+        verify(eventPublisher).publishEvent(any(TransferCreatedEvent.class));
+        verify(eventPublisher).publishEvent(any(TransferCompletedEvent.class));
     }
 
     @Test
@@ -58,28 +67,65 @@ class TransferServiceTest {
 
         Transfer input = new Transfer(1L, 2L, new BigDecimal("100.00"), "EUR", null, "ref-2");
 
-        Transfer result = service.createTransfer(input);
+        TransferResult result = service.createTransfer(input);
 
-        assertThat(result.getStatus()).isEqualTo(TransferStatus.FAILED);
-        assertThat(result.getErrorMessage()).isEqualTo("Insufficient funds");
+        assertThat(result.replayed()).isFalse();
+        assertThat(result.transfer().getStatus()).isEqualTo(TransferStatus.FAILED);
+        assertThat(result.transfer().getErrorMessage()).isEqualTo("Insufficient funds");
         assertThat(from.getBalance()).isEqualByComparingTo(new BigDecimal("50.00"));
         assertThat(to.getBalance()).isEqualByComparingTo(new BigDecimal("500.00"));
         verify(accountRepository, never()).save(any());
+        verify(eventPublisher).publishEvent(any(TransferCreatedEvent.class));
+        verify(eventPublisher).publishEvent(any(TransferFailedEvent.class));
     }
 
     @Test
-    void createTransfer_withExistingIdempotencyKey_shouldReturnExisting() {
+    void createTransfer_withExistingCompletedKey_shouldReplay() {
         Transfer existing = new Transfer(1L, 2L, new BigDecimal("100.00"), "EUR", "key-1", "ref");
         existing.setStatus(TransferStatus.COMPLETED);
-        when(transferRepository.findByIdempotencyKey("key-1")).thenReturn(Optional.of(existing));
+        when(transferRepository.findByIdempotencyKeyAndFromAccountId("key-1", 1L))
+                .thenReturn(Optional.of(existing));
 
         Transfer input = new Transfer(1L, 2L, new BigDecimal("100.00"), "EUR", "key-1", "ref");
 
-        Transfer result = service.createTransfer(input);
+        TransferResult result = service.createTransfer(input);
 
-        assertThat(result).isSameAs(existing);
+        assertThat(result.replayed()).isTrue();
+        assertThat(result.transfer()).isSameAs(existing);
         verify(transferRepository, never()).save(any(Transfer.class));
         verify(accountRepository, never()).findByIdForUpdate(anyLong());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void createTransfer_withExistingFailedKey_shouldReplay() {
+        Transfer existing = new Transfer(1L, 2L, new BigDecimal("100.00"), "EUR", "key-2", "ref");
+        existing.setStatus(TransferStatus.FAILED);
+        existing.setErrorMessage("Insufficient funds");
+        when(transferRepository.findByIdempotencyKeyAndFromAccountId("key-2", 1L))
+                .thenReturn(Optional.of(existing));
+
+        Transfer input = new Transfer(1L, 2L, new BigDecimal("100.00"), "EUR", "key-2", "ref");
+
+        TransferResult result = service.createTransfer(input);
+
+        assertThat(result.replayed()).isTrue();
+        assertThat(result.transfer()).isSameAs(existing);
+        verify(transferRepository, never()).save(any(Transfer.class));
+    }
+
+    @Test
+    void createTransfer_withPendingKey_shouldThrow() {
+        Transfer existing = new Transfer(1L, 2L, new BigDecimal("100.00"), "EUR", "key-3", "ref");
+        existing.setStatus(TransferStatus.PENDING);
+        when(transferRepository.findByIdempotencyKeyAndFromAccountId("key-3", 1L))
+                .thenReturn(Optional.of(existing));
+
+        Transfer input = new Transfer(1L, 2L, new BigDecimal("100.00"), "EUR", "key-3", "ref");
+
+        assertThatThrownBy(() -> service.createTransfer(input))
+                .isInstanceOf(TransferInProgressException.class);
+        verify(transferRepository, never()).save(any(Transfer.class));
     }
 
     @Test

@@ -2,9 +2,11 @@ package com.bankflow.accounts.service;
 
 import com.bankflow.accounts.entity.Account;
 import com.bankflow.accounts.repository.AccountRepository;
+import com.bankflow.events.AccountCreatedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.context.ApplicationEventPublisher;
 import java.math.BigDecimal;
 import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,6 +16,8 @@ class AccountServiceTest {
 
     @Mock
     AccountRepository repository;
+    @Mock
+    ApplicationEventPublisher eventPublisher;
     @InjectMocks
     AccountService service;
 
@@ -33,6 +37,7 @@ class AccountServiceTest {
 
         assertThat(result.getId()).isEqualTo(1L);
         verify(repository, times(1)).save(any(Account.class));
+        verify(eventPublisher).publishEvent(new AccountCreatedEvent(1L, "Alice", "IBAN123", new BigDecimal("1000.00")));
     }
 
     @Test

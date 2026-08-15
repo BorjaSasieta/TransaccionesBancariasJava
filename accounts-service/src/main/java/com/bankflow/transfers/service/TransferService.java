@@ -2,9 +2,14 @@ package com.bankflow.transfers.service;
 
 import com.bankflow.accounts.entity.Account;
 import com.bankflow.accounts.repository.AccountRepository;
+import com.bankflow.events.TransferCompletedEvent;
+import com.bankflow.events.TransferCreatedEvent;
+import com.bankflow.events.TransferFailedEvent;
 import com.bankflow.transfers.entity.Transfer;
 import com.bankflow.transfers.entity.TransferStatus;
+import com.bankflow.transfers.exception.TransferInProgressException;
 import com.bankflow.transfers.repository.TransferRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,26 +21,36 @@ public class TransferService {
 
     private final TransferRepository transferRepository;
     private final AccountRepository accountRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public TransferService(TransferRepository transferRepository, AccountRepository accountRepository) {
+    public TransferService(TransferRepository transferRepository, AccountRepository accountRepository,
+                           ApplicationEventPublisher eventPublisher) {
         this.transferRepository = transferRepository;
         this.accountRepository = accountRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
-    public Transfer createTransfer(Transfer transfer) {
+    public TransferResult createTransfer(Transfer transfer) {
         if (transfer.getFromAccountId().equals(transfer.getToAccountId())) {
             throw new IllegalArgumentException("From and to accounts must be different");
         }
         if (transfer.getIdempotencyKey() != null) {
-            Optional<Transfer> existing = transferRepository.findByIdempotencyKey(transfer.getIdempotencyKey());
+            Optional<Transfer> existing = transferRepository
+                    .findByIdempotencyKeyAndFromAccountId(transfer.getIdempotencyKey(), transfer.getFromAccountId());
             if (existing.isPresent()) {
-                return existing.get();
+                Transfer existingTransfer = existing.get();
+                if (existingTransfer.getStatus() == TransferStatus.PENDING) {
+                    throw new TransferInProgressException(existingTransfer.getId());
+                }
+                return new TransferResult(existingTransfer, true);
             }
         }
 
         transfer.setStatus(TransferStatus.PENDING);
         transfer = transferRepository.save(transfer);
+        eventPublisher.publishEvent(new TransferCreatedEvent(transfer.getId(), transfer.getFromAccountId(),
+                transfer.getToAccountId(), transfer.getAmount(), transfer.getCurrency()));
 
         final Long fromAccountId = transfer.getFromAccountId();
         final Long toAccountId = transfer.getToAccountId();
@@ -50,7 +65,10 @@ public class TransferService {
             transfer.setStatus(TransferStatus.FAILED);
             transfer.setErrorMessage("Insufficient funds");
             transfer.setUpdatedAt(OffsetDateTime.now());
-            return transferRepository.save(transfer);
+            transfer = transferRepository.save(transfer);
+            eventPublisher.publishEvent(new TransferFailedEvent(transfer.getId(), fromAccountId, toAccountId,
+                    "Insufficient funds"));
+            return new TransferResult(transfer, false);
         }
 
         from.setBalance(from.getBalance().subtract(transfer.getAmount()));
@@ -60,7 +78,10 @@ public class TransferService {
 
         transfer.setStatus(TransferStatus.COMPLETED);
         transfer.setUpdatedAt(OffsetDateTime.now());
-        return transferRepository.save(transfer);
+        transfer = transferRepository.save(transfer);
+        eventPublisher.publishEvent(new TransferCompletedEvent(transfer.getId(), fromAccountId, toAccountId,
+                transfer.getAmount(), transfer.getCurrency()));
+        return new TransferResult(transfer, false);
     }
 
     public Optional<Transfer> getTransfer(Long id) {

@@ -1,6 +1,7 @@
 package com.bankflow.accounts.dto;
 
 import com.bankflow.accounts.entity.Account;
+import com.bankflow.accounts.mapper.AccountMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -47,7 +48,7 @@ class AccountDtoTest {
     void from_shouldMapAccountToDto() {
         Account account = new Account(5L, "ES777", "Luis", new BigDecimal("250.00"));
 
-        AccountDto dto = AccountDto.from(account);
+        AccountDto dto = new AccountMapper().toDto(account);
 
         assertThat(dto.getId()).isEqualTo(5L);
         assertThat(dto.getIban()).isEqualTo("ES777");

@@ -2,6 +2,7 @@ package com.bankflow.accounts.controller;
 
 import com.bankflow.accounts.dto.AccountDto;
 import com.bankflow.accounts.entity.Account;
+import com.bankflow.accounts.mapper.AccountMapper;
 import com.bankflow.accounts.service.AccountService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +28,7 @@ public class AccountController {
     @GetMapping("/{id}")
     public ResponseEntity<AccountDto> get(@PathVariable("id") Long id) {
         return service.getAccount(id)
-                .map(account -> ResponseEntity.ok(AccountDto.from(account)))
+                .map(account -> ResponseEntity.ok(new AccountMapper().toDto(account)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

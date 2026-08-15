@@ -1,6 +1,5 @@
 package com.bankflow.transfers.dto;
 
-import com.bankflow.transfers.entity.Transfer;
 import com.bankflow.transfers.entity.TransferStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,10 +26,4 @@ public class TransferResponseDto {
     private String errorMessage;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
-
-    public static TransferResponseDto from(Transfer t) {
-        return new TransferResponseDto(t.getId(), t.getFromAccountId(), t.getToAccountId(), t.getAmount(),
-                t.getCurrency(), t.getStatus(), t.getReference(), t.getIdempotencyKey(),
-                t.getErrorMessage(), t.getCreatedAt(), t.getUpdatedAt());
-    }
 }

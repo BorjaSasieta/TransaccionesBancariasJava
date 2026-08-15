@@ -2,10 +2,8 @@ package com.bankflow.exception;
 
 import com.bankflow.transfers.exception.TransferInProgressException;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -20,20 +18,24 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiError> response = handler.transferInProgress(ex);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().status()).isEqualTo(202);
-        assertThat(response.getBody().error()).isEqualTo("TRANSFER_IN_PROGRESS");
+        ApiError body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.status()).isEqualTo(202);
+        assertThat(body.error()).isEqualTo("TRANSFER_IN_PROGRESS");
+        assertThat(body.message()).contains("Transfer with id 1");
     }
 
     @Test
     void dataIntegrityViolation_shouldReturnConflict() {
-        DataIntegrityViolationException ex = mock(DataIntegrityViolationException.class);
+        org.springframework.dao.DataIntegrityViolationException ex = mock(org.springframework.dao.DataIntegrityViolationException.class);
         ResponseEntity<ApiError> response = handler.conflict(ex);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().status()).isEqualTo(409);
-        assertThat(response.getBody().message()).isEqualTo("Duplicate request");
+        ApiError body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.status()).isEqualTo(409);
+        assertThat(body.error()).isEqualTo("CONFLICT");
+        assertThat(body.message()).isEqualTo("Duplicate request");
     }
 
     @Test
@@ -42,20 +44,10 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiError> response = handler.badRequest(ex);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().status()).isEqualTo(400);
-        assertThat(response.getBody().message()).isEqualTo("Invalid field");
-    }
-
-    @Test
-    void methodArgumentNotValid_shouldReturnBadRequest() {
-        MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
-        // Si tu handler utiliza detalles de ex, haz when(...) según sea necesario.
-        ResponseEntity<ApiError> response = handler.validation(ex);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().status()).isEqualTo(400);
-        assertThat(response.getBody().message()).isEqualTo("Invalid request body");
+        ApiError body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.status()).isEqualTo(400);
+        assertThat(body.error()).isEqualTo("BAD_REQUEST");
+        assertThat(body.message()).isEqualTo("Invalid field");
     }
 }

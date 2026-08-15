@@ -2,6 +2,7 @@ package com.bankflow.transfers.dto;
 
 import com.bankflow.transfers.entity.Transfer;
 import com.bankflow.transfers.entity.TransferStatus;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,6 +13,7 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class TransferResponseDto {
 
     private Long id;
@@ -25,23 +27,6 @@ public class TransferResponseDto {
     private String errorMessage;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
-
-    public TransferResponseDto(Long id, Long fromAccountId, Long toAccountId, BigDecimal amount,
-                               String currency, TransferStatus status, String reference,
-                               String idempotencyKey, String errorMessage,
-                               OffsetDateTime createdAt, OffsetDateTime updatedAt) {
-        this.id = id;
-        this.fromAccountId = fromAccountId;
-        this.toAccountId = toAccountId;
-        this.amount = amount;
-        this.currency = currency;
-        this.status = status;
-        this.reference = reference;
-        this.idempotencyKey = idempotencyKey;
-        this.errorMessage = errorMessage;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-    }
 
     public static TransferResponseDto from(Transfer t) {
         return new TransferResponseDto(t.getId(), t.getFromAccountId(), t.getToAccountId(), t.getAmount(),

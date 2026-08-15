@@ -2,6 +2,7 @@ package com.bankflow.transfers.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class TransferRequestDto {
 
     @NotNull
@@ -26,13 +28,4 @@ public class TransferRequestDto {
     private String currency = "EUR";
 
     private String reference;
-
-    public TransferRequestDto(Long fromAccountId, Long toAccountId, BigDecimal amount,
-                              String currency, String reference) {
-        this.fromAccountId = fromAccountId;
-        this.toAccountId = toAccountId;
-        this.amount = amount;
-        this.currency = currency;
-        this.reference = reference;
-    }
 }

@@ -1,6 +1,7 @@
 package com.bankflow.accounts.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class Account {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,8 +27,4 @@ public class Account {
 
     @Column(precision = 18, scale = 2)
     private BigDecimal balance = BigDecimal.ZERO;
-
-    public Account(Long id, String iban, String owner, BigDecimal balance) {
-        this.id = id; this.iban = iban; this.owner = owner; this.balance = balance;
-    }
 }

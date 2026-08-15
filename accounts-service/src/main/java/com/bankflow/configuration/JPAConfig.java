@@ -5,6 +5,6 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @Configuration
-@EnableJpaRepositories("com.bankflow.accounts.repository")
-@EntityScan("com.bankflow.accounts.entity")
+@EnableJpaRepositories("com.bankflow")
+@EntityScan("com.bankflow")
 public class JPAConfig { }

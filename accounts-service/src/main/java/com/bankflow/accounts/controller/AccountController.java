@@ -23,4 +23,11 @@ public class AccountController {
                         uriBuilder.path("/api/v1/accounts/{id}").buildAndExpand(created.getId()).toUri())
                 .build();
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<AccountDto> get(@PathVariable Long id) {
+        return service.getAccount(id)
+                .map(account -> ResponseEntity.ok(AccountDto.from(account)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
 }

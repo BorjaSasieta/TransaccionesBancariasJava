@@ -44,4 +44,14 @@ class AccountServiceTest {
         assertThat(res).isPresent().contains(a);
         verify(repository).findById(1L);
     }
+
+    @Test
+    void getAccountById_missing_shouldReturnEmpty() {
+        when(repository.findById(999L)).thenReturn(Optional.empty());
+
+        Optional<Account> res = service.getAccount(999L);
+
+        assertThat(res).isEmpty();
+        verify(repository).findById(999L);
+    }
 }
